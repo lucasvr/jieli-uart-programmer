@@ -1,0 +1,36 @@
+[package]
+name = "jieli-uart-programmer"
+description = "flashes JieLi SH55 chips over their UART boot ROM"
+version = "0.16.0"
+edition = "2024"
+
+[[bin]]
+name = "jieli-uart"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive", "env"] }
+clap_complete = { version = "4.5.66", features = ["unstable-dynamic"] }
+color-eyre = "0.6"
+eyre = "0.6"
+fs-err = { version = "3.3.0", features = ["expose_original_error"] }
+glob = "0.3.3"
+serialport = { version = "=4.7.3", default-features = false, features = ["usbportinfo-interface"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+mismatched_lifetime_syntaxes = "allow"
+
+[lints.clippy]
+collapsible_match = "allow"
+identity_op = "allow"
+let_and_return = "allow"
+new_without_default = "allow"
+result_large_err = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+undocumented_unsafe_blocks = "deny"
+unnecessary_trailing_comma = "deny"
