@@ -1,6 +1,7 @@
 //! Boot ROM stage: send the key on PB9 after power-on, then the header and
 //! the SDK's RAM loader.
 
+use crate::find::siblings;
 use crate::jieli_image::{Container, KeyBlob, crc8, crc16};
 use eyre::{Result, WrapErr, eyre};
 use std::path::{Path, PathBuf};
@@ -19,11 +20,8 @@ impl Sdk {
         if let Some(dir) = dir {
             return Ok(Self(dir));
         }
-        let cwd = std::env::current_dir()?;
-        let exe = std::env::current_exe()?;
-        cwd.ancestors()
-            .chain(exe.ancestors())
-            .map(|a| a.join(Self::DIR_NAME))
+        siblings(Self::DIR_NAME)?
+            .into_iter()
             .find(|c| c.join(Self::MCU).is_dir())
             .map(Self)
             .ok_or_else(|| eyre!("no {} found; pass --sdk or set JIELI_SDK", Self::DIR_NAME))

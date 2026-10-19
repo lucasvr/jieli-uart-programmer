@@ -4,6 +4,7 @@
 //! Frame format, in both directions: `A5 | type | len u16 LE | payload | crc8`.
 
 use crate::boot::BootParams;
+use crate::find::UsbSerial;
 use crate::jieli_image::crc8;
 use eyre::{Result, WrapErr, bail, ensure};
 use serialport::SerialPort;
@@ -38,8 +39,13 @@ pub struct Dongle {
 }
 
 impl Dongle {
-    /// Linux by-id path pattern.
-    pub const BY_ID: &str = "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_*";
+    /// The ESP32-C6's USB serial/JTAG port.
+    pub const USB: UsbSerial = UsbSerial {
+        what: "dongle",
+        vid: 0x303a,
+        pid: 0x1001,
+        by_id: "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_*",
+    };
 
     /// Opens the dongle and checks that it responds. A dongle interrupted
     /// mid-command can stop reading USB, so on failure it is reset and

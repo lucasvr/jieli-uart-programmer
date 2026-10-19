@@ -8,12 +8,12 @@ on PB9. The binary is called `jieli-uart`.
 - An ESP32-C6-DevKitC-1 running the `jieli-programmer` firmware, connected to the host through
   its port labelled **USB**.
 - A DPS150 bench supply powering the chip at 4.0 V, controlled from the host. `dps150tool` must
-  be in `PATH`.
+  be in `PATH`, or built in a `dps150tool` checkout next to this directory.
 - JieLi's AD15N SDK (`fw-AD15N`), which provides the RAM loader (`sh55loader.uart`) and the
   second-stage bootloader (`uboot.boot`).
 
-The dongle and the supply are found through `/dev/serial/by-id`. Use `--dongle`, `--psu` and
-`--sdk` (or `JIELI_DONGLE`, `JIELI_PSU` and `JIELI_SDK`) to override the defaults.
+The dongle and the supply are found by their USB ids, on Linux and macOS. Use `--dongle`, `--psu`
+and `--sdk` (or `JIELI_DONGLE`, `JIELI_PSU` and `JIELI_SDK`) to override the defaults.
 
 ## Wiring
 

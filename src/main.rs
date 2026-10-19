@@ -13,6 +13,7 @@ use std::time::Duration;
 mod boot;
 mod console;
 mod dongle;
+mod find;
 mod flash;
 mod jieli_image;
 mod link;
@@ -188,18 +189,6 @@ fn parse_num(s: &str) -> Result<u32, String> {
     r.map_err(|e| e.to_string())
 }
 
-/// Returns `explicit`, or the first serial port matching `pattern`.
-fn find_port(explicit: Option<String>, pattern: &str, what: &str) -> Result<String> {
-    if let Some(p) = explicit {
-        return Ok(p);
-    }
-    glob::glob(pattern)?
-        .flatten()
-        .next()
-        .map(|p| p.display().to_string())
-        .ok_or_else(|| eyre!("no {what} found at {pattern}; is it plugged in?"))
-}
-
 /// The hardware setup: dongle, power supply and SDK.
 struct Board {
     dongle: String,
@@ -214,8 +203,8 @@ struct Board {
 impl Board {
     fn new(hw: Hardware) -> Result<Self> {
         Ok(Self {
-            dongle: find_port(hw.dongle, Dongle::BY_ID, "dongle")?,
-            psu: Psu::new(find_port(hw.psu, Psu::BY_ID, "DPS150")?),
+            dongle: Dongle::USB.find(hw.dongle)?,
+            psu: Psu::new(Psu::USB.find(hw.psu)?)?,
             sdk: Sdk::find(hw.sdk)?,
             boot: BootParams::default(),
             off: Duration::from_secs(hw.off_secs),
@@ -347,7 +336,7 @@ fn main() -> Result<()> {
             println!("all CRCs ok");
         }
         Command::Power(args) => {
-            let psu = Psu::new(find_port(args.psu, Psu::BY_ID, "DPS150")?);
+            let psu = Psu::new(Psu::USB.find(args.psu)?)?;
             match args.state {
                 PowerState::On => psu.set(true)?,
                 PowerState::Off => psu.set(false)?,
