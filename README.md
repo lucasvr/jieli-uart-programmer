@@ -9,11 +9,12 @@ on PB9. The binary is called `jieli-uart`.
   its port labelled **USB**.
 - A DPS150 bench supply powering the chip at 4.0 V, controlled from the host. `dps150tool` must
   be in `PATH`, or built in a `dps150tool` checkout next to this directory.
-- JieLi's AD15N SDK (`fw-AD15N`), which provides the RAM loader (`sh55loader.uart`) and the
-  second-stage bootloader (`uboot.boot`).
 
-The dongle and the supply are found by their USB ids, on Linux and macOS. Use `--dongle`, `--psu`
-and `--sdk` (or `JIELI_DONGLE`, `JIELI_PSU` and `JIELI_SDK`) to override the defaults.
+The dongle and the supply are found by their USB ids, on Linux and macOS. Use `--dongle` and
+`--psu` (or `JIELI_DONGLE` and `JIELI_PSU`) to override the defaults.
+
+The RAM loader (`sh55loader.uart`) and the second-stage bootloader (`uboot.boot`) from JieLi's
+AD15N SDK are built into the binary; see `vendor/fw-AD15N`.
 
 ## Wiring
 
@@ -66,3 +67,11 @@ with the SDK's `uboot.boot`, and scramble it with the chip's flash key. Use `wri
 Each command that talks to the chip power-cycles it with the DPS150. The dongle then sends the
 key and pushes the RAM loader, and the flash is accessed through the loader at 100 kbaud. If the
 loader does not start, `--attempts` and `--off-secs` control the retries.
+
+## License
+
+Copyright (c) 2026 Lucas Villa Real.
+
+Licensed under either of the MIT license (`LICENSE-MIT`) or the Apache License 2.0
+(`LICENSE-APACHE`), at your option. The files in `vendor/fw-AD15N` are JieLi's, distributed under
+the Apache License 2.0.

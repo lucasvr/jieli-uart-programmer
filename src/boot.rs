@@ -1,44 +1,14 @@
 //! Boot ROM stage: send the key on PB9 after power-on, then the header and
 //! the SDK's RAM loader.
 
-use crate::find::siblings;
 use crate::jieli_image::{Container, KeyBlob, crc8, crc16};
-use eyre::{Result, WrapErr, eyre};
-use std::path::{Path, PathBuf};
+use eyre::{Result, WrapErr};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-/// Paths to files in JieLi's AD15N SDK.
-pub struct Sdk(PathBuf);
-
-impl Sdk {
-    const MCU: &str = "sdk/app/post_build/sh55/mcu";
-    const DIR_NAME: &str = "fw-AD15N";
-
-    /// Returns `dir`, or searches for `fw-AD15N` in the ancestors of the
-    /// current directory and of the executable.
-    pub fn find(dir: Option<PathBuf>) -> Result<Self> {
-        if let Some(dir) = dir {
-            return Ok(Self(dir));
-        }
-        siblings(Self::DIR_NAME)?
-            .into_iter()
-            .find(|c| c.join(Self::MCU).is_dir())
-            .map(Self)
-            .ok_or_else(|| eyre!("no {} found; pass --sdk or set JIELI_SDK", Self::DIR_NAME))
-    }
-
-    fn file(&self, name: &str) -> PathBuf {
-        self.0.join(Self::MCU).join(name)
-    }
-
-    pub fn loader(&self) -> PathBuf {
-        self.file("sh55loader.uart")
-    }
-
-    pub fn uboot(&self) -> PathBuf {
-        self.file("uboot.boot")
-    }
-}
+/// The RAM loader from JieLi's AD15N SDK; see `vendor/fw-AD15N`.
+pub const LOADER: &[u8] = include_bytes!("../vendor/fw-AD15N/sh55loader.uart");
+/// The second-stage bootloader from JieLi's AD15N SDK.
+pub const UBOOT: &[u8] = include_bytes!("../vendor/fw-AD15N/uboot.boot");
 
 /// RAM loader that the dongle sends to the boot ROM.
 pub struct Loader {
@@ -53,9 +23,8 @@ impl Loader {
     /// SH55 loaders carry no address; they run from 0.
     const DEFAULT_ADDR: u32 = 0;
 
-    pub fn read(path: &Path) -> Result<Self> {
-        let c = Container::parse(&fs_err::read(path)?)
-            .wrap_err_with(|| format!("reading {}", path.display()))?;
+    pub fn parse(data: &[u8]) -> Result<Self> {
+        let c = Container::parse(data).wrap_err("parsing the loader")?;
         let seed = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos() as u64;
         let mut image = c.code()?.to_vec();
         // Key blob for 0xFFFF, i.e. no chip key.

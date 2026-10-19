@@ -32,7 +32,7 @@ impl Psu {
     }
 
     /// Finds `dps150tool` in `PATH`, or built in a checkout next to this
-    /// directory, like the SDK.
+    /// directory.
     fn find_tool() -> Result<PathBuf> {
         let in_path = std::env::var_os("PATH")
             .is_some_and(|path| std::env::split_paths(&path).any(|d| d.join(Self::TOOL).is_file()));

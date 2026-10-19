@@ -3,6 +3,7 @@ name = "jieli-uart-programmer"
 description = "flashes JieLi SH55 chips over their UART boot ROM"
 version = "0.16.0"
 edition = "2024"
+license = "MIT OR Apache-2.0"
 
 [[bin]]
 name = "jieli-uart"

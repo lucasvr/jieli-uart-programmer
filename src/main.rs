@@ -1,4 +1,4 @@
-use boot::{BootParams, Loader, Sdk};
+use boot::{BootParams, LOADER, Loader, UBOOT};
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use console::Console;
 use dongle::{Dongle, Driver};
@@ -22,7 +22,7 @@ mod power;
 /// Flashes JieLi SH55 chips (AD15N, AD152A4) through their UART boot ROM.
 ///
 /// Requires the jieli-programmer dongle (ESP32-C6) wired to PB9, a DPS150
-/// power supply, and the AD15N SDK.
+/// power supply.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about)]
 struct Cli {
@@ -59,10 +59,6 @@ struct Hardware {
     /// DPS150 serial port [default: found by USB id].
     #[arg(long, env = "JIELI_PSU")]
     psu: Option<String>,
-
-    /// The AD15N SDK (`fw-AD15N`) [default: found next to this directory].
-    #[arg(long, env = "JIELI_SDK")]
-    sdk: Option<PathBuf>,
 
     /// Seconds to keep the supply off before booting.
     #[arg(long, default_value_t = 8)]
@@ -150,10 +146,6 @@ struct Pack {
 
     #[arg(long, default_value = "0x80000", value_parser = parse_num)]
     flash_size: u32,
-
-    /// The AD15N SDK (`fw-AD15N`) [default: found next to this directory].
-    #[arg(long, env = "JIELI_SDK")]
-    sdk: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
@@ -189,11 +181,10 @@ fn parse_num(s: &str) -> Result<u32, String> {
     r.map_err(|e| e.to_string())
 }
 
-/// The hardware setup: dongle, power supply and SDK.
+/// The hardware setup: dongle and power supply.
 struct Board {
     dongle: String,
     psu: Psu,
-    sdk: Sdk,
     boot: BootParams,
     off: Duration,
     attempts: usize,
@@ -205,7 +196,6 @@ impl Board {
         Ok(Self {
             dongle: Dongle::USB.find(hw.dongle)?,
             psu: Psu::new(Psu::USB.find(hw.psu)?)?,
-            sdk: Sdk::find(hw.sdk)?,
             boot: BootParams::default(),
             off: Duration::from_secs(hw.off_secs),
             attempts: hw.attempts.max(1),
@@ -219,7 +209,7 @@ impl Board {
 
     /// Power-cycles the chip into the loader and opens the flash.
     fn connect(&self) -> Result<Flash> {
-        let loader = Loader::read(&self.sdk.loader())?;
+        let loader = Loader::parse(LOADER)?;
         eprintln!("loader {} ({} bytes)", loader.version, loader.image.len());
         let header = loader.header(&self.boot);
         let mut d = self.open_dongle()?;
@@ -262,7 +252,7 @@ impl Board {
                 let packer = Packer {
                     key: flash.info.flash_key(),
                     flash_size: flash.info.flash_size.unwrap_or(0x8_0000),
-                    uboot: Uboot::parse(&fs_err::read(self.sdk.uboot())?)?,
+                    uboot: Uboot::parse(UBOOT)?,
                 };
                 (0, packer.pack(&data)?.0)
             }
@@ -309,11 +299,10 @@ fn main() -> Result<()> {
             Console::new(dongle).run(&board.psu, args.baud, None)?;
         }
         Command::Pack(args) => {
-            let sdk = Sdk::find(args.sdk)?;
             let packer = Packer {
                 key: u16::try_from(args.key)?,
                 flash_size: args.flash_size,
-                uboot: Uboot::parse(&fs_err::read(sdk.uboot())?)?,
+                uboot: Uboot::parse(UBOOT)?,
             };
             let image = packer.pack(&fs_err::read(&args.app)?)?;
             fs_err::write(&args.output, image.bytes())?;
