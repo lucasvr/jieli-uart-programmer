@@ -5,7 +5,7 @@
 //! 0x0020  top-level entries, ENC(0xFFFF): uboot.boot, isd_config.ini, app_dir_head
 //! 0x0080  uboot.boot (bank header and data scrambled apart), then the config
 //! 0x1000  application area, scrambled with the chip's flash key:
-//!         app_area_head, then app.bin, VM and EEPROM entries, then app.bin at +0x100
+//!         app_area_head, then app.bin and VM entries, then app.bin at +0x100
 //! ```
 //!
 //! The application area is mapped at 0x100000, so the app starts at
@@ -27,11 +27,9 @@ const APP_OFF: usize = 0x100;
 const ENTRY_LEN: usize = 32;
 const APP_ALIGN: usize = 0x1000;
 const VM_ALIGN: usize = 0x100;
-const EEPROM_SIZE: u32 = 0x2000;
 
 /// Raw name fields from a stock image; the bytes after the NUL are data.
 const VM_NAME: [u8; 16] = *b"VM\0\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x04\x00\x00";
-const EEPROM_NAME: [u8; 16] = *b"EEPROM\0\xff\xff\xff\xff\xffAUTO";
 
 fn align(n: usize, a: usize) -> usize {
     n.div_ceil(a) * a
@@ -185,10 +183,10 @@ impl Packer {
         app.resize(align(app.len(), APP_ALIGN), 0xff);
         let area_size = APP_OFF + app.len();
         let vm_start = align(AREA + area_size, VM_ALIGN);
-        let eeprom = self.flash_size - EEPROM_SIZE;
         ensure!(
-            vm_start as u32 <= eeprom,
-            "app does not fit: it ends at {vm_start:#x}, EEPROM starts at {eeprom:#x}"
+            vm_start as u32 <= self.flash_size,
+            "app does not fit: it ends at {vm_start:#x}, the flash at {:#x}",
+            self.flash_size
         );
 
         let mut body = Vec::with_capacity(area_size);
@@ -206,13 +204,11 @@ impl Packer {
                 0x12,
                 0x81,
                 vm_start as u32,
-                eeprom - vm_start as u32,
+                self.flash_size - vm_start as u32,
                 0xffff,
             )
-            .with_name(VM_NAME),
-            DirEntry::new("EEPROM", 0x92, 0x81, eeprom, EEPROM_SIZE, 0xffff)
-                .with_name(EEPROM_NAME)
-                .last(),
+            .with_name(VM_NAME)
+            .last(),
         ];
         for e in &entries {
             body.extend_from_slice(&e.to_bytes());
